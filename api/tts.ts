@@ -1,3 +1,4 @@
+import { boundedJson, InputError, inputResponse } from '../lib/api-input.js';
 export const config = { runtime: 'edge' };
 
 export default async function handler(request: Request): Promise<Response> {
@@ -28,12 +29,11 @@ export default async function handler(request: Request): Promise<Response> {
 
   let text: string;
   try {
-    const body = await request.json();
-    text = String(body.text ?? '').trim();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid body' }), {
-      status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    const body = await boundedJson(request, 16384);
+    if (typeof body.text !== 'string' || body.text.length > 4000) throw new InputError('Invalid text');
+    text = body.text.trim();
+  } catch (error) {
+    return inputResponse(error, cors);
   }
 
   if (!text) {
@@ -42,10 +42,12 @@ export default async function handler(request: Request): Promise<Response> {
     });
   }
 
+  try {
   const elRes = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${elVoice}`,
     {
       method: 'POST',
+      signal: AbortSignal.timeout(30000),
       headers: {
         'xi-api-key':   elKey,
         'Content-Type': 'application/json',
@@ -60,8 +62,7 @@ export default async function handler(request: Request): Promise<Response> {
   );
 
   if (!elRes.ok) {
-    const err = await elRes.text();
-    console.error('[api/tts] ElevenLabs error', elRes.status, err);
+    console.error('[api/tts] Provider status', elRes.status);
     return new Response(JSON.stringify({ error: `ElevenLabs ${elRes.status}` }), {
       status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
     });
@@ -76,4 +77,7 @@ export default async function handler(request: Request): Promise<Response> {
       'Cache-Control': 'no-store',
     },
   });
+  } catch {
+    return new Response(JSON.stringify({ error: 'Speech generation failed' }), { status: 502, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+  }
 }
