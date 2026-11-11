@@ -1,0 +1,19 @@
+{
+  "toolkit": "pharma-ai-agent-toolkit",
+  "version": "1.0.1",
+  "profile": "generic",
+  "files": [
+    ".agent-toolkit/INSTALLATION.md",
+    ".agent-toolkit/verify.py",
+    ".agents/skills/pharma-release-gate/SKILL.md",
+    ".agents/skills/pharma-repository-audit/SKILL.md",
+    ".agents/skills/pharma-safe-change/SKILL.md",
+    ".github/agents/pharma-auditor.agent.md",
+    ".github/agents/pharma-implementation.agent.md",
+    ".github/copilot-instructions.md",
+    ".github/instructions/pharma-ai-project.instructions.md",
+    ".github/prompts/architecture-audit.prompt.md",
+    ".github/prompts/release-gate.prompt.md",
+    ".github/workflows/pharma-ai-toolkit-guard.yml"
+  ]
+}
