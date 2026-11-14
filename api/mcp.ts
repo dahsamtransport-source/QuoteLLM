@@ -3,6 +3,7 @@
  * Protocol: MCP over Streamable HTTP (JSON-RPC 2.0, POST)
  * Returns rich markdown + SVG image widgets for ChatGPT rendering
  */
+import { boundedBody, inputResponse, record } from '../lib/api-input.js';
 export const config = { runtime: 'edge' };
 
 // ─── Pricing logic ────────────────────────────────────────────────────────────
@@ -574,11 +575,13 @@ export default async function handler(request: Request): Promise<Response> {
 
   const baseUrl = new URL(request.url).origin;
   let body: any;
-  try { body = await request.json(); }
-  catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }); }
+  try { body = JSON.parse(new TextDecoder().decode(await boundedBody(request, 65536))); }
+  catch (error) { return inputResponse(error, cors); }
 
   const requests = Array.isArray(body) ? body : [body];
+  if (requests.length === 0 || requests.length > 10) return new Response(JSON.stringify(rpcErr(null, -32600, 'Invalid batch size')), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
   const responses = await Promise.all(requests.map(async (req) => {
+    if (!record(req) || typeof req.method !== 'string' || (req.params !== undefined && !record(req.params))) return rpcErr(null, -32600, 'Invalid Request');
     const { id = null, method, params = {} } = req;
 
     if (method === 'initialize') {
@@ -589,11 +592,12 @@ export default async function handler(request: Request): Promise<Response> {
     if (method === 'ping')         return ok(id, {});
 
     if (method === 'tools/call') {
-      const { name, arguments: args = {} } = params;
+      const { name, arguments: args = {} } = params as Record<string, unknown>;
+      if (typeof name !== 'string' || !record(args)) return rpcErr(id, -32602, 'Invalid params');
       try {
         return ok(id, await runTool(name, args, baseUrl));
       } catch (e: any) {
-        return rpcErr(id, -32603, e?.message ?? 'Internal error');
+        return rpcErr(id, -32603, 'Internal error');
       }
     }
 
@@ -602,5 +606,6 @@ export default async function handler(request: Request): Promise<Response> {
 
   const filtered = responses.filter(Boolean);
   const payload  = Array.isArray(body) ? filtered : filtered[0];
-  return new Response(JSON.stringify(payload), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
+  if (!filtered.length) return new Response(null, { status: 204, headers: cors });
+  return new Response(JSON.stringify(payload), { status: 200, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 }
