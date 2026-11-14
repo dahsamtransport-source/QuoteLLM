@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd web && npm install && npm run build",
+  "buildCommand": "cd web && npm ci && npm run build",
   "outputDirectory": "web/dist",
   "installCommand": "echo skip",
   "rewrites": [

@@ -1,3 +1,4 @@
+import { boundedJson, InputError, inputResponse } from '../lib/api-input.js';
 export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request) {
@@ -10,10 +11,17 @@ export default async function handler(req: Request) {
     return new Response(JSON.stringify({ error: 'Missing API key' }), { status: 500 });
   }
 
-  const { imageBase64 } = await req.json() as { imageBase64: string };
+  let imageBase64: string;
+  try {
+    const body = await boundedJson(req, 4 * 1024 * 1024);
+    if (typeof body.imageBase64 !== 'string' || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(body.imageBase64)) throw new InputError('Expected a PNG, JPEG or WebP data URL');
+    imageBase64 = body.imageBase64;
+  } catch (error) { return inputResponse(error); }
 
+  try {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
+    signal: AbortSignal.timeout(30000),
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
@@ -49,9 +57,8 @@ Ne retourne JAMAIS une valeur inventée. Si une information est absente ou illis
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    console.error('[api/ocr] OpenAI error', res.status, err);
-    return new Response(JSON.stringify({ extracted: {} }), { status: 200 });
+    console.error('[api/ocr] Provider status', res.status);
+    return new Response(JSON.stringify({ extracted: {} }), { status: 502, headers: { 'Cache-Control': 'no-store' } });
   }
 
   const data: any = await res.json();
@@ -66,6 +73,9 @@ Ne retourne JAMAIS une valeur inventée. Si une information est absente ou illis
   }
 
   return new Response(JSON.stringify({ extracted }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
+  } catch {
+    return new Response(JSON.stringify({ error: 'Extraction failed' }), { status: 502, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+  }
 }
