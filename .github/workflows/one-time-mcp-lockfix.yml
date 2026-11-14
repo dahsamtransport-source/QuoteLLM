@@ -1,18 +1,19 @@
 name: One-time compatible MCP dependency lock repair
 on:
-  push:
-    branches: [security/quotellm-api-bounds-20261114]
+  pull_request:
+    branches: [claude/chatgpt-insurance-app-LZwOd]
     paths: ['.github/workflows/one-time-mcp-lockfix.yml']
 permissions:
   contents: write
 jobs:
   update-mcp-lock:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'security/quotellm-api-bounds-20261114' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
