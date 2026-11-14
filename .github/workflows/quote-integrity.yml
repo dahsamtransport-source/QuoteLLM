@@ -1,0 +1,30 @@
+name: QuoteLLM integrity and web build
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'api/**'
+      - 'tests/**'
+      - '.github/workflows/quote-integrity.yml'
+  push:
+    branches:
+      - claude/chatgpt-insurance-app-LZwOd
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Test no fabricated insurance OCR results
+        run: node --test tests/*.test.mjs
+      - name: Install locked web dependencies
+        run: npm ci --prefix web
+      - name: Typecheck and build web
+        run: npm run build --prefix web
