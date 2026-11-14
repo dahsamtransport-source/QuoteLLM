@@ -146,7 +146,7 @@ export function useConversation() {
       dispatch({ type: 'SET_STEP', payload: 'doc_upload' });
       withTyping(700, () => {
         bot(
-          'Avant de continuer, **une astuce** : tu peux m\'envoyer une photo de ta carte de tiers payant ou de ton attestation. Ça me permettra de pré-remplir certaines infos et d\'économiser des questions.',
+          "L'analyse automatique des documents n'est pas disponible. Si vous sélectionnez une carte, elle restera sur votre appareil et aucune information ne sera pré-remplie. Vous pouvez continuer en saisissant directement le montant.",
           'document-upload',
         );
         enableInput('Ou saisissez le montant directement…');
@@ -377,30 +377,25 @@ export function useConversation() {
   const handleDocUpload = useCallback((msgId: string, _file: File) => {
     dispatch({ type: 'CONSUME', payload: msgId });
     pendingWidgetIdRef.current = null;
-    me('📎 Voici ma carte de tiers payant.');
+    me('📎 Document sélectionné (non transmis).');
 
-    // Simulate OCR analysis
-    withTyping(2000, () => {
-      answersRef.current = {
-        ...answersRef.current,
-        current_insurer: 'MGEN',
-        regime: 'general',
-      };
+    // There is no wired OCR integration in this UI; do not invent insurer or
+    // policy details from the selected file or transmit it silently.
+    withTyping(400, () => {
       bot(
-        "J'ai bien analysé ton document ✅\n\n" +
-        "J'ai identifié :\n" +
-        "- Assureur : **MGEN**\n" +
-        "- Régime : **Régime général**\n\n" +
-        "Ça nous fera gagner du temps sur la suite ! Il me reste juste ton budget mensuel approximatif pour comparer.",
+        "Ce document n'a pas été analysé automatiquement. " +
+        "Aucune information d'assureur ou de régime n'a été extraite, " +
+        "et votre fichier n'a pas été envoyé à un service externe. " +
+        "Pour continuer, saisissez vous-même les informations de votre contrat.",
       );
       later(() => {
-        withTyping(600, () => {
+        withTyping(500, () => {
           const q = getQuestion('current_price');
           bot(q.prompt);
           enableInput(q.placeholder ?? '');
           dispatch({ type: 'SET_STEP', payload: 'current_price' });
         });
-      }, 900);
+      }, 300);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
