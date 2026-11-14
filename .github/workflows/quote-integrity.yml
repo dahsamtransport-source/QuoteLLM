@@ -22,9 +22,9 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Test no fabricated insurance OCR results
-        run: node --test tests/*.test.mjs
       - name: Install locked web dependencies
         run: npm ci --prefix web
+      - name: Test insurance evidence and API request bounds
+        run: node --test tests/*.test.mjs
       - name: Typecheck and build web
         run: npm run build --prefix web
