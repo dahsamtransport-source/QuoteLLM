@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 *.local
+
+# Local Graphify knowledge graphs and isolated Python environment
+graphify-out/
+.graphify-venv/
