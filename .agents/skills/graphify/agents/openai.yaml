@@ -1,0 +1,4 @@
+interface:
+  display_name: "Graphify"
+  short_description: "Map project code and trace dependencies locally"
+  default_prompt: "Use $graphify to map this project and explain its key dependencies."

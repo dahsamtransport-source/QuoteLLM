@@ -6,3 +6,9 @@ Start with observed code/config, not assumptions; label PASS, FAIL, BLOCKED, NOT
 Change only this repository and use reviewed branches. Preserve working CI, generated files, Lovable history, database boundaries and published secrets.
 Do not merge, deploy, post accounting entries, change production inventory or run SQL migrations without explicit scoped authorization.
 User-facing reports in Arabic; identifiers, commands and code may use English.
+
+## Graphify project maps
+
+Use `.agents/skills/graphify/SKILL.md` for architecture and dependency queries.
+Build and refresh with the bundled helper before relying on a stale graph.
+Graph evidence supplements source inspection and tests; it does not replace them.

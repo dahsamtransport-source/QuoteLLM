@@ -1,0 +1,24 @@
+# Graphify: generated output and private/runtime data
+.graphify-venv/
+graphify-out/
+.agents/
+.agent-toolkit/
+node_modules/
+.venv/
+venv/
+.git/
+dist/
+build/
+.output/
+.wrangler/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+backups/
+exports/
