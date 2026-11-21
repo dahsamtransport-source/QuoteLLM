@@ -1,3 +1,4 @@
+import { boundedJson, InputError, inputResponse, validMessages, validSlots } from '../lib/api-input.js';
 export const config = { runtime: 'edge' };
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -142,6 +143,7 @@ export default async function handler(request: Request): Promise<Response> {
     'Access-Control-Allow-Origin':  '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control': 'no-store',
   };
 
   if (request.method === 'OPTIONS') {
@@ -165,11 +167,13 @@ export default async function handler(request: Request): Promise<Response> {
 
   let body: { messages: ApiMessage[]; slots: Partial<Slots> };
   try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    const input = await boundedJson(request);
+    const messages = input.messages === undefined ? [] : input.messages;
+    const slots = input.slots === undefined ? {} : input.slots;
+    if (!validMessages(messages) || !validSlots(slots)) throw new InputError('Invalid conversation');
+    body = { messages, slots: slots as Partial<Slots> };
+  } catch (error) {
+    return inputResponse(error, cors);
   }
 
   const { messages = [], slots = {} } = body;
@@ -183,6 +187,7 @@ export default async function handler(request: Request): Promise<Response> {
   try {
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
+      signal: AbortSignal.timeout(30000),
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type':  'application/json',
@@ -195,16 +200,10 @@ export default async function handler(request: Request): Promise<Response> {
     });
 
     if (!openaiRes.ok) {
-      const errText = await openaiRes.text();
-      console.error('[api/chat] OpenAI error', openaiRes.status, errText);
-      // Surface the real error in the reply so it's visible in the UI
-      let userMsg = "Désolé, une erreur technique est survenue. Peux-tu réessayer dans un instant ?";
-      try {
-        const errJson = JSON.parse(errText);
-        if (errJson?.error?.message) userMsg = `Erreur API : ${errJson.error.message}`;
-      } catch {}
+      console.error('[api/chat] Provider status', openaiRes.status);
+      const userMsg = "Désolé, une erreur technique est survenue. Peux-tu réessayer dans un instant ?";
       return new Response(JSON.stringify({ reply: userMsg, slots: {}, action: null }), {
-        status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
@@ -222,19 +221,23 @@ export default async function handler(request: Request): Promise<Response> {
       parsed = { reply: rawText, slots: {}, action: null };
     }
 
+    if (!parsed || typeof parsed.reply !== 'string' || parsed.reply.length > 12000 ||
+        !validSlots(parsed.slots) || ![null, 'show-pricing', 'show-cta'].includes(parsed.action)) {
+      throw new Error('Invalid provider output');
+    }
     return new Response(JSON.stringify(parsed), {
       status: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('[api/chat]', err);
+    console.error('[api/chat] Provider request failed');
     return new Response(
       JSON.stringify({
         reply:  "Désolé, une erreur technique est survenue. Peux-tu réessayer dans un instant ?",
         slots:  {},
         action: null,
       }),
-      { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } },
+      { status: 502, headers: { ...cors, 'Content-Type': 'application/json' } },
     );
   }
 }

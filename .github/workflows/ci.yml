@@ -22,5 +22,9 @@ jobs:
           cache-dependency-path: ${{ matrix.project }}/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm run build
+      - if: matrix.project == 'web'
+        run: node node_modules/typescript/bin/tsc -p ../tsconfig.api.json
+      - if: matrix.project == 'web'
+        run: node --test ../tests/api.test.mjs
       - if: matrix.project == 'mcp'
         run: npm audit --audit-level=moderate
