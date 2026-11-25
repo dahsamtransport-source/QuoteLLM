@@ -1,0 +1,22 @@
+{
+  "name": "quotellm-tools",
+  "interface": {
+    "displayName": "quotellm-tools"
+  },
+  "plugins": [
+    {
+      "name": "github",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/openai/plugins.git",
+        "path": "./plugins/github",
+        "sha": "981b02c0c44058b595f3b4180002c3ae3c806d40"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
